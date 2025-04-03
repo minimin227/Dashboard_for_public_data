@@ -120,15 +120,8 @@ filtered_df, selected_columns = filter_and_select_columns(
     df, selected_규모, selected_대업종, selected_중업종, selected_발생형태, selected_년도
 )
 
-df_group = df.groupby(['통계기준년', '규모', '대업종', '중업종', '발생형태']).agg(
-    위험지수=('재해정도_숫자', 'sum'),
-    재해자수=('재해정도_숫자', 'count')
-).reset_index()
 # 전체 위험지수 합계 계산
-total_risk = df_group['위험지수'].sum()
-
-# 위험지수를 100점 만점으로 정규화
-df_group['정규화된_위험지수'] = (df_group['위험지수'] / total_risk) * 10000
+total_risk = df['재해정도_숫자자'].sum()
 
 # 그룹화 기준이 없는 경우 에러 방지
 if len(selected_columns) == 0:
@@ -141,7 +134,6 @@ else:
     ).reset_index()
 
     # 정규화된 위험지수 다시 계산
-    # total_risk = df_group2['위험지수'].sum()
     df_group2['정규화된_위험지수'] = (df_group2['위험지수'] / total_risk) * 10000
     df_group2 = df_group2.sort_values(by='정규화된_위험지수', ascending=False)
 
@@ -155,11 +147,6 @@ metric = st.selectbox('그래프를 표시할 통계 값 선택', metrics)
 x_axis = st.selectbox('X축 선택', columns_for_x_and_color[1:], index=0)  # X축은 '없음' 선택 옵션 없이 설정
 color_axis = st.selectbox('Color 기준 선택', columns_for_x_and_color, index=1)
 graph_type = st.selectbox('그래프 유형 선택', graph_types, index=0)
-
-df_group3 = df.groupby(['중업종']).agg(
-    위험지수=('재해정도_숫자', 'sum'),
-    재해자수=('재해정도_숫자', 'count')
-).reset_index()
 
 # 그래프 그리기 버튼
 if st.button('그래프 그리기'):
@@ -190,11 +177,16 @@ if st.button('그래프 그리기'):
         
     st.plotly_chart(fig)
 
+
 # 1중업종, 1발생형태 당 평균 정규화된_위험지수 계산
+df_group = df.groupby(['중업종']).agg(
+    위험지수=('재해정도_숫자', 'sum'),
+    재해자수=('재해정도_숫자', 'count')
+).reset_index()
 total_risk = df_group['위험지수'].sum()
-df_group3['정규화된_위험지수'] = (df_group3['위험지수'] / total_risk) * 10000
-df_group3['정규화된_위험지수/24'] = df_group3['정규화된_위험지수']/24
-risk_average = df_group3['정규화된_위험지수/24'].sum()/df['중업종'].nunique()
+df_group['정규화된_위험지수'] = (df_group['위험지수'] / total_risk) * 10000
+df_group['정규화된_위험지수/24'] = df_group['정규화된_위험지수']/df['발생형태'].nunique()
+risk_average = df_group['정규화된_위험지수/24'].sum()/df['중업종'].nunique()
 
 # 표
 st.subheader(f"표 (1 중업종, 1 발생형태 당 평균 정규화된_위험지수 = {risk_average:.2f})")
