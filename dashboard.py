@@ -121,7 +121,7 @@ filtered_df, selected_columns = filter_and_select_columns(
 )
 
 # 전체 위험지수 합계 계산
-total_risk = df['재해정도_숫자자'].sum()
+total_risk = df['재해정도_숫자'].sum()
 
 # 그룹화 기준이 없는 경우 에러 방지
 if len(selected_columns) == 0:
