@@ -1,15 +1,16 @@
 import pandas as pd 
 import streamlit as st
 import plotly.express as px
-
+import os
 
 # 데이터 집계 함수 (캐싱)
 @st.cache_data
 def load_data():
-    중업종리스트_df = pd.read_csv('/home/uho317/Dashboard/중업종리스트.csv')
-    df_2023 = pd.read_excel('/home/uho317/Dashboard/2023_산업재해통계_마이크로데이터_merged.xlsx')
-    df_2022 = pd.read_csv('/home/uho317/Dashboard/2022_산업재해통계_마이크로데이터_merged.csv')
-    df_2021 = pd.read_csv('/home/uho317/Dashboard/2021_산업재해통계_마이크로데이터_merged.csv')
+    data_folder = 'Data'
+    df_2023 = pd.read_excel(os.path.join(data_folder, '2023_산업재해통계_마이크로데이터_merged.xlsx'))
+    df_2022 = pd.read_csv(os.path.join(data_folder, '2022_산업재해통계_마이크로데이터_merged.csv'))
+    df_2021 = pd.read_csv(os.path.join(data_folder, '2021_산업재해통계_마이크로데이터_merged.csv'))
+    중업종리스트_df = pd.read_csv(os.path.join(data_folder, '중업종리스트.csv'))
     df = pd.concat([df_2023, df_2022, df_2021], axis=0, ignore_index=True)
     df['중업종'] = df['중업종'].str.replace('전기·가스·증기및수도사업', '전기·가스·증기·수도사업')
     df['대업종'] = df['대업종'].str.replace('전기·가스·증기및수도사업', '전기·가스·증기·수도사업')
@@ -227,11 +228,9 @@ if selected_중업종 != '없음' and selected_중업종 != '전체':
         # st.dataframe(filtered_links[['링크1', '링크2', '링크3']])
 
 
-import os
-
-
 # 📂 발생형태 CSV 파일 경로 설정
-csv_folder = '/home/uho317/Dashboard/발생형태'
+csv_folder = os.path.join(os.getcwd(), '발생형태')  # 현재 디렉토리 아래 '발생형태' 폴더를 경로로 설정
+
 
 # 발생형태 버튼 표시 함수 (정렬된 순서대로 표시)
 def show_발생형태_buttons(sorted_발생형태_list):
