@@ -194,8 +194,8 @@ st.dataframe(merged.head(100).reset_index(drop = True))
 
 # 그래프 설정 옵션 제공
 st.subheader(f"그래프 설정")
-columns_for_x_and_color = ['없음', '규모', '대업종', '중업종', '발생형태', '통계기준년']
-metrics = ['정규화된_위험지수', '재해자수', '위험지수', '위험지수/근로자수', '재해만인율']
+columns_for_x_and_color = ['없음', '발생형태', '대업종', '중업종', '규모', '통계기준년']
+metrics = ['위험지수/근로자수', '정규화된_위험지수', '재해자수', '재해만인율']
 graph_types = ['Bar', 'Line', 'Scatter']
 
 metric = st.selectbox('그래프를 표시할 통계 값 선택', metrics)
@@ -298,7 +298,7 @@ if selected_중업종:
     selected_발생형태_file = show_발생형태_buttons(sorted_발생형태_list)
 
     if selected_발생형태_file:
-        st.subheader(f"{selected_발생형태_file}.csv 파일 내용")
+        st.subheader(f"{selected_발생형태_file}에 대한 교육 자료 링크")
         csv_df = load_csv_file(selected_발생형태_file)
 
         if csv_df is not None:
