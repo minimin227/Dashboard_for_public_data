@@ -89,18 +89,17 @@ scale_mapping = {
 발생형태_list = df['발생형태'].unique().tolist()
 년도_list = df['통계기준년'].unique().tolist()
 
-# 사용자 입력 multiselect
-selected_규모 = st.multiselect('규모 선택', 규모_list, default=[])
-selected_대업종 = st.multiselect('대업종 선택', 대업종_list, default=[])
-
-if selected_대업종:
-    filtered_middle_industries = df[df['대업종'].isin(selected_대업종)]['중업종'].unique().tolist()
+# 선택지 목록에 '없음' 포함
+selected_규모 = st.selectbox('규모 선택', ['없음', '전체'] + 규모_list)
+selected_대업종 = st.selectbox('대업종 선택', ['없음', '전체'] + 대업종_list)
+if selected_대업종 != '전체' and selected_대업종 != '없음':
+    filtered_middle_industries = df[df['대업종'] == selected_대업종]['중업종'].unique().tolist()
 else:
     filtered_middle_industries = 중업종_list
-
-selected_중업종 = st.multiselect('중업종 선택', filtered_middle_industries, default=[])
-selected_발생형태 = st.multiselect('발생형태 선택', 발생형태_list, default=발생형태_list)
-selected_년도 = st.multiselect('년도 선택', 년도_list, default=[])
+filtered_middle_industries = sorted(filtered_middle_industries) 
+selected_중업종 = st.selectbox('중업종 선택', ['없음', '전체'] + filtered_middle_industries)
+selected_발생형태 = st.selectbox('발생형태 선택', ['없음', '전체'] + 발생형태_list)
+selected_년도 = st.selectbox('년도 선택', ['없음', '전체'] + 년도_list)
 
 # 필터 적용 함수
 @st.cache_data
@@ -108,34 +107,33 @@ def filter_and_select_columns(df, selected_규모, selected_대업종, selected_
     filtered_df = df.copy()
     selected_columns = ['통계기준년', '규모', '대업종', '중업종', '발생형태']
 
-    # ⬇️ 다중 선택 필터링 (선택 항목이 비어있지 않은 경우만 적용)
-    if selected_규모:
-        filtered_df = filtered_df[filtered_df['규모'].isin(selected_규모)]
-    else:
-        selected_columns.remove('규모')
-
-    if selected_대업종:
-        filtered_df = filtered_df[filtered_df['대업종'].isin(selected_대업종)]
-    else:
+    # 필터링 적용 및 그룹화 기준 설정 (전체와 없음 구분)
+    if selected_규모 == '없음':
+        selected_columns.remove('규모')  # 그룹화에서 제외
+    elif selected_규모 != '전체': 
+        filtered_df = filtered_df[filtered_df['규모'] == selected_규모]
+        
+    if selected_대업종 == '없음':
         selected_columns.remove('대업종')
-
-    if selected_중업종:
-        filtered_df = filtered_df[filtered_df['중업종'].isin(selected_중업종)]
-    else:
+    elif selected_대업종 != '전체':
+        filtered_df = filtered_df[filtered_df['대업종'] == selected_대업종]
+        
+    if selected_중업종 == '없음':
         selected_columns.remove('중업종')
-
-    if selected_발생형태:
-        filtered_df = filtered_df[filtered_df['발생형태'].isin(selected_발생형태)]
-    else:
+    elif selected_중업종 != '전체':
+        filtered_df = filtered_df[filtered_df['중업종'] == selected_중업종]
+        
+    if selected_발생형태 == '없음':
         selected_columns.remove('발생형태')
-
-    if selected_년도:
-        filtered_df = filtered_df[filtered_df['통계기준년'].isin(selected_년도)]
-    else:
+    elif selected_발생형태 != '전체':
+        filtered_df = filtered_df[filtered_df['발생형태'] == selected_발생형태]
+        
+    if selected_년도 == '없음':
         selected_columns.remove('통계기준년')
+    elif selected_년도 != '전체':
+        filtered_df = filtered_df[filtered_df['통계기준년'] == selected_년도]
 
     return filtered_df, selected_columns
-
 
 
 
@@ -181,7 +179,7 @@ merged = df_rate_melted_grouped.merge(df_group, on=merge_keys, how='outer')
 # merged = merged.dropna()
 merged['위험지수/근로자수'] = (merged['위험지수'] / merged['근로자수'])
 merged['재해만인율'] = (merged['재해자수'] / merged['근로자수'])*10000
-merged = merged.sort_values(by='위험지수/근로자수', ascending=False)
+
 # 1중업종, 1발생형태 당 평균 정규화된_위험지수 계산
 risk_average = 10000/df['중업종'].nunique()/df['발생형태'].nunique()
 
@@ -233,27 +231,33 @@ if st.button('그래프 그리기'):
     st.plotly_chart(fig)
 
 
+
+
 # 중업종 링크 표시 기능
-if selected_중업종:
-    filtered_links = 중업종리스트_df[중업종리스트_df['중업종'].isin(selected_중업종)]
+if selected_중업종 != '없음' and selected_중업종 != '전체':
+    filtered_links = 중업종리스트_df[중업종리스트_df['중업종'] == selected_중업종]
 
-    if not filtered_links.empty:
-        st.subheader("선택한 중업종의 안전보건관리체계 구축 가이드")
-
+    if len(filtered_links) > 0:
+        st.subheader(f"{selected_중업종}의 안전보건관리체계 구축 가이드")
+       # 링크를 하이퍼링크로 변환하는 함수
         def make_hyperlink(link):
             if pd.notna(link):
                 return f"[링크]({link})"
             else:
                 return "없음" 
-
-        for idx, row in filtered_links.iterrows():
-            st.markdown(f"#### {row['중업종']}")
-            st.markdown(f"- 링크 1: {make_hyperlink(row['링크1'])}")
-            st.markdown(f"- 링크 2: {make_hyperlink(row['링크2'])}")
-            st.markdown(f"- 링크 3: {make_hyperlink(row['링크3'])}")
+        # 링크 열들을 하이퍼링크로 변환
+        for index, row in filtered_links.iterrows():
+            링크1 = make_hyperlink(row['링크1'])
+            링크2 = make_hyperlink(row['링크2'])
+            링크3 = make_hyperlink(row['링크3'])
+            
+            st.markdown(f"### 링크 1: {링크1}")
+            st.markdown(f"### 링크 2: {링크2}")
+            st.markdown(f"### 링크 3: {링크3}")
     else:
-        st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")
-
+        st.warning(f"선택된 중업종 ({selected_중업종})에 대한 링크 정보가 없습니다.")
+        # 링크 표 표시
+        # st.dataframe(filtered_links[['링크1', '링크2', '링크3']])
 
 
 # 📂 발생형태 CSV 파일 경로 설정
@@ -285,21 +289,23 @@ def load_csv_file(file_name):
 
 
 # ✅ 중업종 선택 및 발생형태 버튼 표시
-if selected_중업종:
-    filtered_df = merged[merged['중업종'].isin(selected_중업종)]
+if selected_중업종 != '없음' and selected_중업종 != '전체':
+    # 사용자가 선택한 중업종에 따라 사용 가능한 발생형태 표시
+    filtered_df = merged[merged['중업종'] == selected_중업종]
 
-    sorted_발생형태_list = (
-        filtered_df.sort_values(by='위험지수/근로자수', ascending=False)['발생형태']
-        .dropna().unique().tolist()
-    )
+    # 📌 필터링된 merged에서 발생형태 목록을 이미 정렬된 상태로 추출 (정규화된_위험지수 기준)
+    sorted_발생형태_list = filtered_df.sort_values(by='정규화된_위험지수', ascending=False)['발생형태'].unique().tolist()
 
-    st.subheader("선택한 중업종 관련 발생형태 예방 정보 링크")
+    st.subheader(f"{selected_중업종} - 발생형태 별 예방 정보 링크")
 
+    # 발생형태를 버튼으로 표시 (정렬된 순서대로)
     selected_발생형태_file = show_발생형태_buttons(sorted_발생형태_list)
-
+    
     if selected_발생형태_file:
         st.subheader(f"{selected_발생형태_file}.csv 파일 내용")
+        
+        # 선택된 발생형태에 해당하는 CSV 파일 불러오기
         csv_df = load_csv_file(selected_발생형태_file)
-
+        
         if csv_df is not None:
             st.dataframe(csv_df)
