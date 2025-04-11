@@ -108,7 +108,7 @@ def filter_and_select_columns(df, selected_규모, selected_대업종, selected_
     filtered_df = df.copy()
     selected_columns = ['통계기준년', '규모', '대업종', '중업종', '발생형태']
 
-    # ⬇️ 다중 선택 필터링 (선택 항목이 비어있지 않은 경우만 적용)
+    # 다중 선택 필터링 (선택 항목이 비어있지 않은 경우만 적용)
     if selected_규모:
         filtered_df = filtered_df[filtered_df['규모'].isin(selected_규모)]
     else:
@@ -147,7 +147,7 @@ filtered_df, selected_columns = filter_and_select_columns(
 # 전체 위험지수 합계 계산
 total_risk = df['재해정도_숫자'].sum()
 
-# ✅ 그룹화 및 정규화된 위험지수 계산
+# 그룹화 및 정규화된 위험지수 계산
 try:
     if len(selected_columns) == 0:
         st.warning("선택된 필터가 없어 그룹화할 수 없습니다.")
@@ -160,11 +160,11 @@ try:
 
         df_group['정규화된_위험지수'] = (df_group['위험지수'] / total_risk) * 10000
 
-        st.subheader("📊 그룹화된 재해 통계")
+        st.subheader("그룹화된 재해 통계")
         st.dataframe(df_group.head(100).reset_index(drop=True))
 
 except Exception as e:
-    st.error(f"❌ 그룹화 중 오류 발생: {e}")
+    st.error(f"그룹화 중 오류 발생: {e}")
     df_group = pd.DataFrame()
 
 
@@ -191,14 +191,14 @@ try:
         merged['재해만인율'] = (merged['재해자수'] / merged['근로자수']) * 10000
         merged = merged.sort_values(by='위험지수/근로자수', ascending=False)
 
-        st.subheader("📋 병합된 통계 데이터")
+        st.subheader("병합된 통계 데이터")
         st.dataframe(merged.head(100).reset_index(drop=True))
     else:
         st.warning("병합할 그룹 데이터가 없습니다.")
         merged = pd.DataFrame()
 
 except Exception as e:
-    st.error(f"❌ 병합 또는 파생 변수 계산 중 오류 발생: {e}")
+    st.error(f"병합 또는 파생 변수 계산 중 오류 발생: {e}")
     merged = pd.DataFrame()
 
 # 1중업종, 1발생형태 당 평균 정규화된_위험지수 계산
@@ -303,7 +303,7 @@ def load_csv_file(file_name):
         return None
 
 
-# ✅ 중업종 선택 및 발생형태 버튼 표시
+# 중업종 선택 및 발생형태 버튼 표시
 if selected_중업종:
     filtered_df = merged[merged['중업종'].isin(selected_중업종)]
 
