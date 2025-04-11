@@ -1,5 +1,6 @@
 import pandas as pd 
 import streamlit as st
+st.write("✅ 앱 시작됨")
 import plotly.express as px
 import os
 
