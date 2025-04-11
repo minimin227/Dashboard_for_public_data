@@ -90,17 +90,44 @@ scale_mapping = {
 년도_list = df['통계기준년'].unique().tolist()
 
 # 사용자 입력 multiselect
-selected_규모 = st.multiselect('규모 선택', 규모_list, default=[])
-selected_대업종 = st.multiselect('대업종 선택', 대업종_list, default=[])
+# 규모 선택
+select_all_규모 = st.checkbox("전체 규모 선택")
+selected_규모 = st.multiselect(
+    '규모 선택', 규모_list, default=규모_list if select_all_규모 else []
+)
 
+# 대업종 선택
+select_all_대업종 = st.checkbox("전체 대업종 선택")
+selected_대업종 = st.multiselect(
+    '대업종 선택', 대업종_list, default=대업종_list if select_all_대업종 else []
+)
+
+# 중업종 필터 (대업종에 따라 중업종 필터링)
 if selected_대업종:
     filtered_middle_industries = df[df['대업종'].isin(selected_대업종)]['중업종'].unique().tolist()
 else:
     filtered_middle_industries = 중업종_list
 
-selected_중업종 = st.multiselect('중업종 선택', filtered_middle_industries, default=['건설업'])
-selected_발생형태 = st.multiselect('발생형태 선택', 발생형태_list, default=발생형태_list)
-selected_년도 = st.multiselect('년도 선택', 년도_list, default=[])
+# 중업종 선택
+select_all_중업종 = st.checkbox("전체 중업종 선택")
+selected_중업종 = st.multiselect(
+    '중업종 선택', filtered_middle_industries,
+    default=filtered_middle_industries if select_all_중업종 else ['건설업']
+)
+
+# 발생형태 선택
+select_all_발생형태 = st.checkbox("전체 발생형태 선택")
+selected_발생형태 = st.multiselect(
+    '발생형태 선택', 발생형태_list,
+    default=발생형태_list if select_all_발생형태 else []
+)
+
+# 연도 선택
+select_all_년도 = st.checkbox("전체 연도 선택")
+selected_년도 = st.multiselect(
+    '년도 선택', 년도_list,
+    default=년도_list if select_all_년도 else []
+)
 
 # 필터 적용 함수
 @st.cache_data
