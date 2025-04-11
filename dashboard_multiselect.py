@@ -147,41 +147,60 @@ filtered_df, selected_columns = filter_and_select_columns(
 # 전체 위험지수 합계 계산
 total_risk = df['재해정도_숫자'].sum()
 
-# 그룹화 기준이 없는 경우 에러 방지
-if len(selected_columns) == 0:
-    st.error("선택된 그룹화 기준이 없습니다. 적어도 하나의 기준을 선택하세요.")
-else:
-    # 그룹화 처리 (사용자가 필터링한 데이터를 사용)
-    df_group = filtered_df.groupby(selected_columns).agg(
-        위험지수=('재해정도_숫자', 'sum'),
-        재해자수=('재해정도_숫자', 'count')
-    ).reset_index()
+# ✅ 그룹화 및 정규화된 위험지수 계산
+try:
+    if len(selected_columns) == 0:
+        st.warning("선택된 필터가 없어 그룹화할 수 없습니다.")
+        df_group = pd.DataFrame()
+    else:
+        df_group = filtered_df.groupby(selected_columns).agg(
+            위험지수=('재해정도_숫자', 'sum'),
+            재해자수=('재해정도_숫자', 'count')
+        ).reset_index()
 
-    # 정규화된 위험지수 다시 계산
-    df_group['정규화된_위험지수'] = (df_group['위험지수'] / total_risk) * 10000
-    # df_group = df_group.sort_values(by='정규화된_위험지수', ascending=False)
+        df_group['정규화된_위험지수'] = (df_group['위험지수'] / total_risk) * 10000
 
-st.subheader(selected_columns)
+        st.subheader("📊 그룹화된 재해 통계")
+        st.dataframe(df_group.head(100).reset_index(drop=True))
+
+except Exception as e:
+    st.error(f"❌ 그룹화 중 오류 발생: {e}")
+    df_group = pd.DataFrame()
+
 
 # df_group과 같은 구조로 근로자수 그룹화
-# ✅ df_rate_melted를 df_group과 동일한 조건으로 필터링하려면
-merge_keys = [col for col in selected_columns if col != '발생형태']
+# df_rate_melted를 df_group과 동일한 조건으로 필터링하려면
+try:
+    # 그룹 키 지정
+    merge_keys = [col for col in selected_columns if col != '발생형태']
 
-# merge_keys 기준으로 filtered_df에서 필터링된 조건만 추출
-filtered_keys_df = filtered_df[merge_keys].drop_duplicates()
+    if not df_group.empty:
+        # merge를 위한 키만 추출
+        filtered_keys_df = filtered_df[merge_keys].drop_duplicates()
+        filtered_rate_df = pd.merge(df_rate_melted, filtered_keys_df, on=merge_keys, how='inner')
 
-# df_rate_melted에 merge로 조건 적용
-filtered_rate_df = pd.merge(df_rate_melted, filtered_keys_df, on=merge_keys, how='inner')
+        # 근로자수 그룹화
+        df_rate_melted_grouped = filtered_rate_df.groupby(merge_keys).sum(numeric_only=True).reset_index()
+        df_rate_melted_grouped = df_rate_melted_grouped[merge_keys + ['근로자수']]
 
-# 근로자수 그룹화
-df_rate_melted_grouped = filtered_rate_df.groupby(merge_keys).sum(numeric_only=True).reset_index()
-df_rate_melted_grouped = df_rate_melted_grouped[merge_keys + ['근로자수']]
+        # 병합
+        merged = df_rate_melted_grouped.merge(df_group, on=merge_keys, how='outer')
 
-merged = df_rate_melted_grouped.merge(df_group, on=merge_keys, how='outer')
-# merged = merged.dropna()
-merged['위험지수/근로자수'] = (merged['위험지수'] / merged['근로자수'])
-merged['재해만인율'] = (merged['재해자수'] / merged['근로자수'])*10000
-merged = merged.sort_values(by='위험지수/근로자수', ascending=False)
+        # 파생 지표 계산
+        merged['위험지수/근로자수'] = merged['위험지수'] / merged['근로자수']
+        merged['재해만인율'] = (merged['재해자수'] / merged['근로자수']) * 10000
+        merged = merged.sort_values(by='위험지수/근로자수', ascending=False)
+
+        st.subheader("📋 병합된 통계 데이터")
+        st.dataframe(merged.head(100).reset_index(drop=True))
+    else:
+        st.warning("병합할 그룹 데이터가 없습니다.")
+        merged = pd.DataFrame()
+
+except Exception as e:
+    st.error(f"❌ 병합 또는 파생 변수 계산 중 오류 발생: {e}")
+    merged = pd.DataFrame()
+
 # 1중업종, 1발생형태 당 평균 정규화된_위험지수 계산
 risk_average = 10000/df['중업종'].nunique()/df['발생형태'].nunique()
 
