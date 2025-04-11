@@ -160,11 +160,11 @@ try:
 
         df_group['정규화된_위험지수'] = (df_group['위험지수'] / total_risk) * 10000
 
-        st.subheader("📊 그룹화된 재해 통계")
+        st.subheader("그룹화된 재해 통계")
         st.dataframe(df_group.head(100).reset_index(drop=True))
 
 except Exception as e:
-    st.error(f"❌ 그룹화 중 오류 발생: {e}")
+    st.error(f"그룹화 중 오류 발생: {e}")
     df_group = pd.DataFrame()
 
 
@@ -191,14 +191,14 @@ try:
         merged['재해만인율'] = (merged['재해자수'] / merged['근로자수']) * 10000
         merged = merged.sort_values(by='위험지수/근로자수', ascending=False)
 
-        st.subheader("📋 병합된 통계 데이터")
+        st.subheader("병합된 통계 데이터")
         st.dataframe(merged.head(100).reset_index(drop=True))
     else:
         st.warning("병합할 그룹 데이터가 없습니다.")
         merged = pd.DataFrame()
 
 except Exception as e:
-    st.error(f"❌ 병합 또는 파생 변수 계산 중 오류 발생: {e}")
+    st.error(f"병합 또는 파생 변수 계산 중 오류 발생: {e}")
     merged = pd.DataFrame()
 
 # 1중업종, 1발생형태 당 평균 정규화된_위험지수 계산
@@ -206,9 +206,9 @@ risk_average = 10000/df['중업종'].nunique()/df['발생형태'].nunique()
 
 # 표
 st.subheader(f"표 (1 중업종, 1 발생형태 당 평균 정규화된_위험지수 = {risk_average:.2f})")
-st.dataframe(df_group.head(100).reset_index(drop = True))
+# st.dataframe(df_group.head(100).reset_index(drop = True))
 # st.dataframe(df_rate_melted_grouped.head(100).reset_index(drop = True))
-st.dataframe(merged.head(100).reset_index(drop = True))
+# st.dataframe(merged.head(100).reset_index(drop = True))
 # st.dataframe(merged.drop(columns=['위험지수']).head(100).reset_index(drop = True))
 
 # 그래프 설정 옵션 제공

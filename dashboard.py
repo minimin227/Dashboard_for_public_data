@@ -98,7 +98,7 @@ if selected_대업종:
 else:
     filtered_middle_industries = 중업종_list
 
-selected_중업종 = st.multiselect('중업종 선택', filtered_middle_industries, default=[])
+selected_중업종 = st.multiselect('중업종 선택', filtered_middle_industries, default=['건설업'])
 selected_발생형태 = st.multiselect('발생형태 선택', 발생형태_list, default=발생형태_list)
 selected_년도 = st.multiselect('년도 선택', 년도_list, default=[])
 
@@ -206,9 +206,9 @@ risk_average = 10000/df['중업종'].nunique()/df['발생형태'].nunique()
 
 # 표
 st.subheader(f"표 (1 중업종, 1 발생형태 당 평균 정규화된_위험지수 = {risk_average:.2f})")
-st.dataframe(df_group.head(100).reset_index(drop = True))
+# st.dataframe(df_group.head(100).reset_index(drop = True))
 # st.dataframe(df_rate_melted_grouped.head(100).reset_index(drop = True))
-st.dataframe(merged.head(100).reset_index(drop = True))
+# st.dataframe(merged.head(100).reset_index(drop = True))
 # st.dataframe(merged.drop(columns=['위험지수']).head(100).reset_index(drop = True))
 
 # 그래프 설정 옵션 제공
