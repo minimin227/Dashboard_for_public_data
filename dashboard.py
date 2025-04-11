@@ -91,14 +91,14 @@ scale_mapping = {
 
 # 사용자 입력 multiselect
 selected_규모 = st.multiselect('규모 선택', 규모_list, default=[])
-selected_대업종 = st.multiselect('대업종 선택', 대업종_list, default=[])
+selected_대업종 = st.multiselect('대업종 선택', 대업종_list, default=['건설업'])
 
 if selected_대업종:
     filtered_middle_industries = df[df['대업종'].isin(selected_대업종)]['중업종'].unique().tolist()
 else:
     filtered_middle_industries = 중업종_list
 
-selected_중업종 = st.multiselect('중업종 선택', filtered_middle_industries, default=[])
+selected_중업종 = st.multiselect('중업종 선택', filtered_middle_industries, default=['건설업'])
 selected_발생형태 = st.multiselect('발생형태 선택', 발생형태_list, default=발생형태_list)
 selected_년도 = st.multiselect('년도 선택', 년도_list, default=[])
 
