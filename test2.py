@@ -41,7 +41,7 @@ if user_api_key:
                     st.dataframe(df_disaster)
 
                     # 3️⃣ Gemini 분석 프롬프트 생성
-                    preview = df_disaster.head(5).to_csv(index=False)
+                    preview = df_disaster.to_csv(index=False)
                     prompt = f"""
                     아래는 산업재해 API에서 가져온 일부 재해 정보입니다. 이 데이터를 보고 주요 특징이나 인사이트를 요약해주세요. 
                     (예: 빈도 높은 사고 유형, 특정 업종, 경향 등)
