@@ -4,6 +4,10 @@ import plotly.express as px
 import os
 import google.generativeai as genai
 import PyPDF2  # ✅ PDF 파일 처리 라이브러리 필요
+import subprocess
+import json
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # 데이터 집계 함수 (캐싱)
 @st.cache_data
@@ -70,7 +74,7 @@ def load_data():
 df, 중업종리스트_df, df_rate_melted = load_data()
 
 # Streamlit 대시보드 설정
-st.title('재해정도 분석 대시보드')
+st.title('재해현황 대시보드')
 
 # 규모 매핑
 scale_mapping = {
@@ -220,7 +224,7 @@ try:
         merged['재해만인율'] = (merged['재해자수'] / merged['근로자수']) * 10000
         merged = merged.sort_values(by='위험지수/근로자수', ascending=False)
 
-        st.subheader("병합된 통계 데이터")
+        st.subheader("재해 통계")
         st.dataframe(merged.head(100).reset_index(drop=True))
     else:
         st.warning("병합할 그룹 데이터가 없습니다.")
@@ -233,20 +237,13 @@ except Exception as e:
 # 1중업종, 1발생형태 당 평균 정규화된_위험지수 계산
 risk_average = 10000/df['중업종'].nunique()/df['발생형태'].nunique()
 
-# 표
-# st.subheader(f"표 (1 중업종, 1 발생형태 당 평균 정규화된_위험지수 = {risk_average:.2f})")
-# st.dataframe(df_group.head(100).reset_index(drop = True))
-# st.dataframe(df_rate_melted_grouped.head(100).reset_index(drop = True))
-# st.dataframe(merged.head(100).reset_index(drop = True))
-# st.dataframe(merged.drop(columns=['위험지수']).head(100).reset_index(drop = True))
-
 # 그래프 설정 옵션 제공
 st.subheader(f"그래프 설정")
 columns_for_x_and_color = ['없음', '발생형태', '대업종', '중업종', '규모', '통계기준년']
 metrics = ['위험지수/근로자수', '정규화된_위험지수', '재해자수', '재해만인율']
 graph_types = ['Bar', 'Line', 'Scatter']
 
-metric = st.selectbox('그래프를 표시할 통계 값 선택', metrics)
+metric = st.multiselect('그래프를 표시할 통계 값 선택', metrics)
 x_axis = st.selectbox('X축 선택', columns_for_x_and_color[1:], index=0)  # X축은 '없음' 선택 옵션 없이 설정
 color_axis = st.selectbox('Color 기준 선택', columns_for_x_and_color, index=1)
 graph_type = st.selectbox('그래프 유형 선택', graph_types, index=0)
@@ -266,19 +263,30 @@ if st.button('그래프 그리기'):
         else:
             fig = px.bar(merged, x=x_axis, y=metric, color=color_axis, title=f'{metric} Bar 그래프')
             
-    elif graph_type == 'Line':
-        if color_axis == '없음':
-            fig = px.line(merged, x=x_axis, y=metric, title=f'{metric} Line 그래프')
-        else:
-            fig = px.line(merged, x=x_axis, y=metric, color=color_axis, title=f'{metric} Line 그래프')
-            
-    elif graph_type == 'Scatter':
-        if color_axis == '없음':
-            fig = px.scatter(merged, x=x_axis, y=metric, title=f'{metric} Scatter 그래프')
-        else:
-            fig = px.scatter(merged, x=x_axis, y=metric, color=color_axis, title=f'{metric} Scatter 그래프')
-        
     st.plotly_chart(fig)
+
+
+
+# 👉 Subplot 방식 그래프
+if st.button('Subplot 방식으로 그래프 그리기'):
+    if len(metric) >= 1:
+        rows = len(metric)
+        fig = make_subplots(
+            rows=rows, cols=1, shared_xaxes=True, vertical_spacing=0.1,
+            subplot_titles=metric
+        )
+        
+        for i, m in enumerate(metric):
+            fig.add_trace(
+                go.Bar(x=merged[x_axis], y=merged[m], name=m),
+                row=i+1, col=1
+            )
+            fig.update_yaxes(title_text=m, row=i+1, col=1)
+        
+        fig.update_layout(height=300 * rows, title_text=f"{x_axis} 기준 지표별 Subplot 비교", showlegend=False)
+        st.plotly_chart(fig)
+    else:
+        st.warning("1개 이상의 지표를 선택해주세요.")
 
 
 # 중업종 링크 표시 기능
@@ -286,7 +294,7 @@ if selected_중업종:
     filtered_links = 중업종리스트_df[중업종리스트_df['중업종'].isin(selected_중업종)]
 
     if not filtered_links.empty:
-        st.subheader(f"{selected_중업종}의 안전보건관리체계 구축 가이드")
+        st.subheader(f"안전보건관리체계 구축 가이드")
 
         def make_hyperlink(link):
             if pd.notna(link):
@@ -303,66 +311,100 @@ if selected_중업종:
         st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")
 
 
-
-# 📂 발생형태 CSV 파일 경로 설정
-csv_folder = os.path.join(os.getcwd(), '발생형태')  # 현재 디렉토리 아래 '발생형태' 폴더를 경로로 설정
-
-
-# 발생형태 버튼 표시 함수 (정렬된 순서대로 표시)
-def show_발생형태_buttons(sorted_발생형태_list):
-    selected_file = None
-
-    for 형태 in sorted_발생형태_list:
-        if st.button(형태):
-            selected_file = 형태
-    return selected_file
-
-# 📁 CSV 파일 불러오기 함수
-def load_csv_file(file_name):
-    file_path = os.path.join(csv_folder, f"{file_name}.csv")
-    if os.path.exists(file_path):
-        try:
-            df = pd.read_csv(file_path)
-            return df
-        except Exception as e:
-            st.error(f"파일을 불러오는 중 에러가 발생했습니다: {e}")
-            return None
-    else:
-        st.warning(f"'{file_name}.csv' 파일을 찾을 수 없습니다.")
-        return None
-
-
-# 중업종 선택 및 발생형태 버튼 표시
-if selected_중업종:
-    filtered_df = merged[merged['중업종'].isin(selected_중업종)]
-
-    sorted_발생형태_list = (
-        filtered_df.sort_values(by='위험지수/근로자수', ascending=False)['발생형태']
-        .dropna().unique().tolist()
-    )
-
-    st.subheader("선택한 중업종 관련 발생형태 예방 정보 링크")
-
-    selected_발생형태_file = show_발생형태_buttons(sorted_발생형태_list)
-
-    if selected_발생형태_file:
-        st.subheader(f"{selected_발생형태_file}에 대한 교육 자료 링크")
-        csv_df = load_csv_file(selected_발생형태_file)
-
-        if csv_df is not None:
-            st.dataframe(csv_df)
-
-
-st.title("📡 Gemini로 안전보건관리 체크리스트 만들기")
-
-# 1️⃣ Gemini API 키 입력 받기
-st.sidebar.header("🔐 Gemini API 설정")
+# Gemini API 키 입력 받기
+st.sidebar.header("Gemini API 설정")
 user_api_key = st.sidebar.text_input("Gemini API 키 입력", type="password")
 
 if user_api_key:
     genai.configure(api_key=user_api_key)
 
-    if st.button("📋 체크리스트 생성하기"):  # ✅ 버튼 추가
+    st.subheader("사고유형별 산업재해 자료")
+
+    # 사고유형 코드 선택
+    ctgr03_dict = {
+        "떨어짐": "11000001",
+        "넘어짐": "11000002",
+        "깔림.뒤집힘": "11000003",
+        "부딪힘": "11000004",
+        "물체에맞음": "11000005",
+        "무너짐": "11000006",
+        "끼임": "11000007",
+        "절단베임찔림": "11000008",
+        "감전": "11000009",
+        "폭발파열": "11000010",
+        "화재": "11000011",
+        "불균형및무리한동작": "11000012",
+        "이상온도물체접촉": "11000013",
+        "화학물질누출접촉": "11000014",
+        "산소결핍": "11000015",
+        "빠짐익사": "11000016",
+        "사업장내교통사고": "11000017",
+        "체육행사": "11000018",
+        "폭력행위": "11000019",
+        "동물상해": "11000020",
+        "기타": "11000021",
+        "사업장외교통사고": "11000022",
+        "업무상질병": "11000023",
+        "진폐등": "11000024",
+        "작업관련질병(뇌심등)": "11000025",
+        "분류불능": "11000026"
+    }
+
+    selected_type = st.selectbox("사고 유형 선택", list(ctgr03_dict.keys()))
+    ctgr03 = ctgr03_dict[selected_type]
+
+    number = st.number_input(
+        "링크 개수 (numOfRows)", min_value=1, max_value=1000, value=100, step=100
+    )
+
+    if st.button("📡 링크 수집 및 분석"):
+        with st.spinner("링크를 불러오는 중입니다..."):
+            try:
+                SERVICE_KEY = "XtjiWbPLxexBDUbR5RjQLsQ6M77Nrjt99CAFTlyV7CzsjfImD3yIqp7E9IGa%2Br2EFc%2F0FhabrGQ4AM%2Fc5uMOWg%3D%3D"
+                cmd = f"""
+                curl -X 'GET' \
+                'https://apis.data.go.kr/B552468/selectMediaList/getselectMediaList?serviceKey={SERVICE_KEY}&ctgr03={ctgr03}&pageNo=1&numOfRows={number}' \
+                -H 'accept: */*'
+                """
+                output = subprocess.check_output(cmd, shell=True, text=True)
+
+                try:
+                    data = json.loads(output)
+                    items = data['body']['items']['item']
+                    df_links = pd.DataFrame(items)
+
+                    st.success("링크수집 성공!")
+                    st.dataframe(df_links)
+
+                    # Gemini 프롬프트 생성
+                    preview = df_links.to_csv(index=False)
+                    중업종 = ", ".join(selected_중업종) if selected_중업종 else "전체 업종"
+                    prompt = f"""
+                    아래는 '{selected_type}' 사고유형에 해당하는 산업재해 링크 리스트입니다.
+                    이 리스트 내에서 {중업종}에 적용될만 한 자료를 찾아서 그 링크를 최대 3개 제시하고 요약해 주세요.
+
+                    ```
+                    {preview}
+                    ```
+                    """
+
+                    model = genai.GenerativeModel("gemini-2.0-flash")
+                    with st.spinner("Gemini가 분석 중입니다..."):
+                        response = model.generate_content(prompt)
+                        # st.subheader("Gemini 요약 결과")
+                        st.markdown(response.text)
+
+                except json.JSONDecodeError:
+                    st.error("JSON 파싱 오류. 응답 내용을 확인하세요.")
+                    st.code(output)
+                except KeyError as e:
+                    st.error(f"JSON 키 오류: {e}")
+
+            except subprocess.CalledProcessError as e:
+                st.error(f"명령 실행 실패: {e}")
+
+    st.subheader("안전보건관리 체크리스트 만들기")
+    if st.button("체크리스트 생성하기"):  # ✅ 버튼 추가
         try:
             # 1. merged DataFrame → CSV 문자열
             preview1 = merged.to_csv(index=False)
@@ -409,7 +451,7 @@ if user_api_key:
             model = genai.GenerativeModel("gemini-2.0-flash")
             with st.spinner("Gemini가 데이터를 분석 중입니다..."):
                 response = model.generate_content(prompt)
-                st.subheader("🧾 Gemini 분석 결과: 체크리스트 제안")
+                # st.subheader("Gemini 분석 결과: 체크리스트 제안")
                 st.markdown(response.text)
 
         except Exception as e:
