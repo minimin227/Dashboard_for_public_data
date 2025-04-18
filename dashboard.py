@@ -170,8 +170,6 @@ def filter_and_select_columns(df, selected_규모, selected_대업종, selected_
     return filtered_df, selected_columns
 
 
-
-
 # 필터링 및 그룹화 기준 설정 (df: 원본 데이터 - 필터링 후 동적 그룹화용)
 filtered_df, selected_columns = filter_and_select_columns(
     df, selected_규모, selected_대업종, selected_중업종, selected_발생형태, selected_년도
@@ -241,74 +239,71 @@ risk_average = 10000/df['중업종'].nunique()/df['발생형태'].nunique()
 st.subheader(f"그래프 설정")
 columns_for_x_and_color = ['없음', '발생형태', '대업종', '중업종', '규모', '통계기준년']
 metrics = ['위험지수/근로자수', '정규화된_위험지수', '재해자수', '재해만인율']
-graph_types = ['Bar', 'Line', 'Scatter']
+graph_types = ['Bar',
+                #  'Line', 
+                #  'Scatter'
+                ]
 
-metric = st.multiselect('그래프를 표시할 통계 값 선택', metrics)
+metric = st.multiselect('그래프를 표시할 통계 값 선택', metrics, default=['위험지수/근로자수'])
 x_axis = st.selectbox('X축 선택', columns_for_x_and_color[1:], index=0)  # X축은 '없음' 선택 옵션 없이 설정
 color_axis = st.selectbox('Color 기준 선택', columns_for_x_and_color, index=1)
 graph_type = st.selectbox('그래프 유형 선택', graph_types, index=0)
 
-# 그래프 그리기 버튼
-if st.button('그래프 그리기'):
-    # 그래프를 그릴 때는 merged를 사용해야 함
-    if x_axis == '규모':
-        # 규모 열이 선택되었을 때는 scale_mapping 순서대로 정렬
-        merged['규모_숫자'] = merged['규모'].map(scale_mapping)
-        merged = merged.sort_values(by='규모_숫자')
+# 그래프를 그릴 때는 merged를 사용해야 함
+if x_axis == '규모':
+    # 규모 열이 선택되었을 때는 scale_mapping 순서대로 정렬
+    merged['규모_숫자'] = merged['규모'].map(scale_mapping)
+    merged = merged.sort_values(by='규모_숫자')
     
-    # 그래프 그리기
-    if graph_type == 'Bar':
-        if color_axis == '없음':
-            fig = px.bar(merged, x=x_axis, y=metric, title=f'{metric} Bar 그래프')
-        else:
-            fig = px.bar(merged, x=x_axis, y=metric, color=color_axis, title=f'{metric} Bar 그래프')
+# # 그래프 그리기
+# if graph_type == 'Bar':
+#     if color_axis == '없음':
+#         fig = px.bar(merged, x=x_axis, y=metric, title=f'{metric} Bar 그래프')
+#     else:
+#         fig = px.bar(merged, x=x_axis, y=metric, color=color_axis, title=f'{metric} Bar 그래프')
             
-    st.plotly_chart(fig)
+# st.plotly_chart(fig)
 
+# Subplot 방식 그래프
 
+if len(metric) >= 1: 
+    rows = len(metric)
+    fig = make_subplots(
+        rows=rows, cols=1, shared_xaxes=True, vertical_spacing=0.1,
+        subplot_titles=metric
+    )
 
-# 👉 Subplot 방식 그래프
-if st.button('Subplot 방식으로 그래프 그리기'):
-    if len(metric) >= 1:
-        rows = len(metric)
-        fig = make_subplots(
-            rows=rows, cols=1, shared_xaxes=True, vertical_spacing=0.1,
-            subplot_titles=metric
-        )
-        
-        for i, m in enumerate(metric):
+    for i, m in enumerate(metric):
+        if color_axis == '없음':
+            # 색상 기준 없음
             fig.add_trace(
                 go.Bar(x=merged[x_axis], y=merged[m], name=m),
                 row=i+1, col=1
             )
-            fig.update_yaxes(title_text=m, row=i+1, col=1)
-        
-        fig.update_layout(height=300 * rows, title_text=f"{x_axis} 기준 지표별 Subplot 비교", showlegend=False)
-        st.plotly_chart(fig)
-    else:
-        st.warning("1개 이상의 지표를 선택해주세요.")
+        else:
+            # 색상 기준이 있을 경우: 각 카테고리별 색상 표현
+            for category in merged[color_axis].dropna().unique():
+                df_filtered = merged[merged[color_axis] == category]
+                fig.add_trace(
+                    go.Bar(
+                        x=df_filtered[x_axis],
+                        y=df_filtered[m],
+                        name=str(category),
+                        showlegend=(i == 0)  # 첫 row에만 범례 표시
+                    ),
+                    row=i+1, col=1
+                )
+        fig.update_yaxes(title_text=m, row=i+1, col=1)
+    barmode = st.radio(
+    "막대그래프 표시 방식 선택",
+    ("group", "overlay"),
+    index=0
+    )
+    fig.update_layout(height=300 * rows, title_text=f"{x_axis} 기준 지표별 Subplot 비교", barmode=barmode)
+    st.plotly_chart(fig)
+else:
+    st.warning("1개 이상의 지표를 선택해주세요.")
 
-
-# 중업종 링크 표시 기능
-if selected_중업종:
-    filtered_links = 중업종리스트_df[중업종리스트_df['중업종'].isin(selected_중업종)]
-
-    if not filtered_links.empty:
-        st.subheader(f"안전보건관리체계 구축 가이드")
-
-        def make_hyperlink(link):
-            if pd.notna(link):
-                return f"[링크]({link})"
-            else:
-                return "없음" 
-
-        for idx, row in filtered_links.iterrows():
-            st.markdown(f"#### {row['중업종']}")
-            st.markdown(f"- 링크 1: {make_hyperlink(row['링크1'])}")
-            st.markdown(f"- 링크 2: {make_hyperlink(row['링크2'])}")
-            st.markdown(f"- 링크 3: {make_hyperlink(row['링크3'])}")
-    else:
-        st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")
 
 
 # Gemini API 키 입력 받기
@@ -349,18 +344,35 @@ if user_api_key:
         "작업관련질병(뇌심등)": "11000025",
         "분류불능": "11000026"
     }
+    # 상위 3개 발생형태 자동 선택
+    top3_발생형태 = (
+        merged['발생형태']
+        .value_counts()
+        .head(3)
+        .index
+        .tolist()
+    )
 
-    selected_type = st.selectbox("사고 유형 선택", list(ctgr03_dict.keys()))
-    ctgr03 = ctgr03_dict[selected_type]
+    # 멀티셀렉트로 사용자 수정 가능
+    selected_types = st.multiselect(
+        "사고 유형 선택 (다중 선택 가능)",
+        options=list(ctgr03_dict.keys()),
+        default=[t for t in ctgr03_dict if t in top3_발생형태]
+    )
 
     number = st.number_input(
         "링크 개수 (numOfRows)", min_value=1, max_value=1000, value=100, step=100
     )
 
-    if st.button("📡 링크 수집 및 분석"):
-        with st.spinner("링크를 불러오는 중입니다..."):
+    if st.button("📡 선택된 모든 유형에 대해 링크 수집 및 분석 실행"):
+        SERVICE_KEY = "XtjiWbPLxexBDUbR5RjQLsQ6M77Nrjt99CAFTlyV7CzsjfImD3yIqp7E9IGa%2Br2EFc%2F0FhabrGQ4AM%2Fc5uMOWg%3D%3D"
+
+        for selected_type in selected_types:
+            ctgr03 = ctgr03_dict[selected_type]
+
+            st.markdown(f"---\n### **{selected_type}** 자료 요약")
+
             try:
-                SERVICE_KEY = "XtjiWbPLxexBDUbR5RjQLsQ6M77Nrjt99CAFTlyV7CzsjfImD3yIqp7E9IGa%2Br2EFc%2F0FhabrGQ4AM%2Fc5uMOWg%3D%3D"
                 cmd = f"""
                 curl -X 'GET' \
                 'https://apis.data.go.kr/B552468/selectMediaList/getselectMediaList?serviceKey={SERVICE_KEY}&ctgr03={ctgr03}&pageNo=1&numOfRows={number}' \
@@ -373,12 +385,12 @@ if user_api_key:
                     items = data['body']['items']['item']
                     df_links = pd.DataFrame(items)
 
-                    st.success("링크수집 성공!")
-                    st.dataframe(df_links)
+                    # st.success(f"{selected_type} 링크 수집 성공")
+                    # st.dataframe(df_links)
 
-                    # Gemini 프롬프트 생성
-                    preview = df_links.to_csv(index=False)
-                    중업종 = ", ".join(selected_중업종) if selected_중업종 else "전체 업종"
+                    preview = df_links.head(5).to_csv(index=False)
+                    중업종 = ", ".join(selected_중업종) if 'selected_중업종' in locals() and selected_중업종 else "전체 업종"
+
                     prompt = f"""
                     아래는 '{selected_type}' 사고유형에 해당하는 산업재해 링크 리스트입니다.
                     이 리스트 내에서 {중업종}에 적용될만 한 자료를 찾아서 그 링크를 최대 3개 제시하고 요약해 주세요.
@@ -389,19 +401,20 @@ if user_api_key:
                     """
 
                     model = genai.GenerativeModel("gemini-2.0-flash")
-                    with st.spinner("Gemini가 분석 중입니다..."):
+                    with st.spinner(f"Gemini가 {selected_type} 사고유형을 분석 중입니다..."):
                         response = model.generate_content(prompt)
-                        # st.subheader("Gemini 요약 결과")
+                        # st.subheader(f"{selected_type} 자료 요약")
                         st.markdown(response.text)
 
                 except json.JSONDecodeError:
-                    st.error("JSON 파싱 오류. 응답 내용을 확인하세요.")
+                    st.error(f"❌ JSON 파싱 오류 ({selected_type})")
                     st.code(output)
                 except KeyError as e:
-                    st.error(f"JSON 키 오류: {e}")
+                    st.error(f"❌ JSON 키 오류 ({selected_type}): {e}")
 
             except subprocess.CalledProcessError as e:
-                st.error(f"명령 실행 실패: {e}")
+                st.error(f"❌ 명령 실행 실패 ({selected_type}): {e}")
+
 
     st.subheader("안전보건관리 체크리스트 만들기")
     if st.button("체크리스트 생성하기"):  # ✅ 버튼 추가
@@ -469,3 +482,24 @@ if user_api_key:
 
 else:
     st.warning("👈 좌측 사이드바에 Gemini API 키를 입력해주세요.")
+
+# 중업종 링크 표시 기능
+if selected_중업종:
+    filtered_links = 중업종리스트_df[중업종리스트_df['중업종'].isin(selected_중업종)]
+
+    if not filtered_links.empty:
+        st.subheader(f"안전보건관리체계 구축 가이드")
+
+        def make_hyperlink(link):
+            if pd.notna(link):
+                return f"[링크]({link})"
+            else:
+                return "없음" 
+
+        for idx, row in filtered_links.iterrows():
+            st.markdown(f"#### {row['중업종']}")
+            st.markdown(f"- 링크 1: {make_hyperlink(row['링크1'])}")
+            st.markdown(f"- 링크 2: {make_hyperlink(row['링크2'])}")
+            st.markdown(f"- 링크 3: {make_hyperlink(row['링크3'])}")
+    else:
+        st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")
