@@ -433,7 +433,7 @@ if user_api_key:
             pdf_path2 = os.path.join("Data", "산업안전보건법(법률)(제19591호)(20240517).pdf")
             with open(pdf_path, "rb") as f:
                 reader = PyPDF2.PdfReader(f)
-                pdf_text = ""
+                pdf_text2 = ""
                 for page in reader.pages[:92]:
                     pdf_text2 += page.extract_text()
             # 3. Gemini 프롬프트 구성
