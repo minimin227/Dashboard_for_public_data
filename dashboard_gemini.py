@@ -310,7 +310,6 @@ if selected_중업종:
         st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")
 
 
-
 # Gemini API 키 입력 받기
 st.sidebar.header("Gemini API 설정")
 user_api_key = st.sidebar.text_input("Gemini API 키 입력", type="password")
@@ -416,7 +415,13 @@ if user_api_key:
                 pdf_text = ""
                 for page in reader.pages[:92]:
                     pdf_text += page.extract_text()
-
+            # 2. PDF 파일을 텍스트로 변환2
+            pdf_path2 = os.path.join("Data", "산업안전보건법(법률)(제19591호)(20240517).pdf")
+            with open(pdf_path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                pdf_text = ""
+                for page in reader.pages[:92]:
+                    pdf_text2 += page.extract_text()
             # 3. Gemini 프롬프트 구성
             중업종 = ", ".join(selected_중업종) if selected_중업종 else "전체 업종"
             prompt = f"""
@@ -445,6 +450,10 @@ if user_api_key:
             안전보건관리 가이드 요약:
             ```
             {pdf_text}
+            ```
+            법령 요약:
+            ```
+            {pdf_text2}
             ```
             """
             # {pdf_text[:20000]}  # 최대 약 2,000자만 발췌
