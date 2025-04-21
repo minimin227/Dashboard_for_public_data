@@ -502,4 +502,31 @@ if selected_중업종:
             st.markdown(f"- 링크 2: {make_hyperlink(row['링크2'])}")
             st.markdown(f"- 링크 3: {make_hyperlink(row['링크3'])}")
     else:
-        st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")
+        st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")       
+
+st.title("사망 뉴스 수집")
+
+news_number = st.number_input("사망 뉴스 수 (numOfRows)", min_value=1, max_value=2480, value=100, step=100, key="news_rows")
+
+if st.button("사망 뉴스 불러오기"):
+    with st.spinner("사망 뉴스를 불러오는 중입니다..."):
+        try:
+            cmd = f"""
+            curl -X 'GET' \
+            'https://apis.data.go.kr/B552468/news_api01/getNews_api01?serviceKey=XtjiWbPLxexBDUbR5RjQLsQ6M77Nrjt99CAFTlyV7CzsjfImD3yIqp7E9IGa%2Br2EFc%2F0FhabrGQ4AM%2Fc5uMOWg%3D%3D&pageNo=1&numOfRows={news_number}' \
+            -H 'accept: */*'
+            """
+            output2 = subprocess.check_output(cmd, shell=True, text=True)
+            data2 = json.loads(output2)
+            items2 = data2['body']['items']['item']
+            df_news = pd.DataFrame(items2)
+
+            st.success("사망 뉴스 수집 성공!")
+            st.dataframe(df_news)
+
+        except subprocess.CalledProcessError as e:
+            st.error(f"❌ 명령어 실행 실패: {e}")
+        except json.JSONDecodeError as e:
+            st.error(f"❌ JSON 파싱 오류: {e}")
+        except KeyError as e:
+            st.error(f"❌ 응답 JSON에서 키 오류 발생: {e}")
