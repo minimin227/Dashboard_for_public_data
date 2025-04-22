@@ -299,7 +299,7 @@ if len(metric) >= 1:
     ("group", "overlay"),
     index=0
     )
-    fig.update_layout(height=300 * rows, title_text=f"{x_axis} 기준 지표별 Subplot 비교", barmode=barmode)
+    fig.update_layout(height=500 * rows, title_text=f"{x_axis} 기준 지표별 Subplot 비교", barmode=barmode)
     st.plotly_chart(fig)
 else:
     st.warning("1개 이상의 지표를 선택해주세요.")
@@ -536,8 +536,8 @@ if selected_중업종:
     else:
         st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")       
 
-st.title("사망 뉴스 수집")
 
+st.subheader(f"사망 뉴스 수집")
 news_number = st.number_input("사망 뉴스 수 (numOfRows)", min_value=1, max_value=2480, value=100, step=100, key="news_rows")
 
 if st.button("사망 뉴스 불러오기"):
