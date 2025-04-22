@@ -507,8 +507,8 @@ if user_api_key:
             with st.spinner("Gemini가 데이터를 분석 중입니다..."):
                 response = model.generate_content(prompt)
                 # st.subheader("Gemini 분석 결과: 체크리스트 제안")
-                st.markdown(response.text)
-
+                
+                st.markdown(response.text, unsafe_allow_html=True) # unsafe_allow_html=True 추가
         except Exception as e:
             st.error(f"❌ 오류 발생: {e}")
 
