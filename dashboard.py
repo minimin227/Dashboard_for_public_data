@@ -8,6 +8,7 @@ import subprocess
 import json
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from datetime import datetime
 
 # 데이터 집계 함수 (캐싱)
 @st.cache_data
@@ -313,7 +314,7 @@ user_api_key = st.sidebar.text_input("Gemini API 키 입력", type="password")
 if user_api_key:
     genai.configure(api_key=user_api_key)
 
-    st.subheader("사고유형별 산업재해 자료")
+    st.subheader("사고유형별 맞춤형 교육 자료")
 
     # 사고유형 코드 선택
     ctgr03_dict = {
@@ -393,7 +394,7 @@ if user_api_key:
 
                     prompt = f"""
                     아래는 '{selected_type}' 사고유형에 해당하는 산업재해 링크 리스트입니다.
-                    이 리스트 내에서 {중업종}에 적용될만 한 자료를 찾아서 그 링크를 최대 3개 제시하고 요약해 주세요.
+                    이 리스트 내에서 {중업종}에 적용될만 한 자료를 찾아서 그 링크를 가장 적합한 1개만 제시하고 요약해 주세요.
 
                     ```
                     {preview}
@@ -511,6 +512,47 @@ if user_api_key:
                 st.markdown(response.text, unsafe_allow_html=True) # unsafe_allow_html=True 추가
         except Exception as e:
             st.error(f"❌ 오류 발생: {e}")
+                
+                
+    st.subheader(f"사망 뉴스 수집")
+    news_number = st.number_input("사망 뉴스 수 (numOfRows)", min_value=1, max_value=2480, value=100, step=100, key="news_rows")
+
+    if st.button("사망 뉴스 불러오기"):
+        with st.spinner("사망 뉴스를 불러오는 중입니다..."):
+            try:
+                cmd = f"""
+                curl -X 'GET' \
+                'https://apis.data.go.kr/B552468/news_api01/getNews_api01?serviceKey=XtjiWbPLxexBDUbR5RjQLsQ6M77Nrjt99CAFTlyV7CzsjfImD3yIqp7E9IGa%2Br2EFc%2F0FhabrGQ4AM%2Fc5uMOWg%3D%3D&pageNo=1&numOfRows={news_number}' \
+                -H 'accept: */*'
+                """
+                output2 = subprocess.check_output(cmd, shell=True, text=True)
+                data2 = json.loads(output2)
+                items2 = data2['body']['items']['item']
+                df_news = pd.DataFrame(items2)
+
+                st.success("사망 뉴스 수집 성공!")
+                # st.dataframe(df_news)
+
+                preview2 = df_news.to_csv(index=False)
+                today_str = datetime.today().strftime("%Y. %m. %d. (%a)")
+                prompt = f"""
+                {preview2}에서 오늘 날짜 기준으로 최근 일주일 동안 발생한 사망사고를 요약하고, 사고유형별로 구분하여 간결히 정리해 주세요.
+                {preview2} content열에 <br />2025. 4. 18. (금), 14:56경<br /><br /> 형식을 날짜가 표시되어 있습니다.
+                오늘은 {today_str}입니다.
+                """
+                # {pdf_text[:20000]}  # 최대 약 2,000자만 발췌
+                model = genai.GenerativeModel("gemini-2.0-flash")
+                with st.spinner("Gemini가 데이터를 분석 중입니다..."):
+                    response = model.generate_content(prompt)
+                    st.markdown(response.text)
+            except subprocess.CalledProcessError as e:
+                st.error(f"❌ 명령어 실행 실패: {e}")
+            except json.JSONDecodeError as e:
+                st.error(f"❌ JSON 파싱 오류: {e}")
+            except KeyError as e:
+                st.error(f"❌ 응답 JSON에서 키 오류 발생: {e}")
+            except Exception as e:
+                st.error(f"❌ 예외 발생: {e}")                    
 
 else:
     st.warning("👈 좌측 사이드바에 Gemini API 키를 입력해주세요.")
@@ -535,30 +577,3 @@ if selected_중업종:
             st.markdown(f"- 링크 3: {make_hyperlink(row['링크3'])}")
     else:
         st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")       
-
-
-st.subheader(f"사망 뉴스 수집")
-news_number = st.number_input("사망 뉴스 수 (numOfRows)", min_value=1, max_value=2480, value=100, step=100, key="news_rows")
-
-if st.button("사망 뉴스 불러오기"):
-    with st.spinner("사망 뉴스를 불러오는 중입니다..."):
-        try:
-            cmd = f"""
-            curl -X 'GET' \
-            'https://apis.data.go.kr/B552468/news_api01/getNews_api01?serviceKey=XtjiWbPLxexBDUbR5RjQLsQ6M77Nrjt99CAFTlyV7CzsjfImD3yIqp7E9IGa%2Br2EFc%2F0FhabrGQ4AM%2Fc5uMOWg%3D%3D&pageNo=1&numOfRows={news_number}' \
-            -H 'accept: */*'
-            """
-            output2 = subprocess.check_output(cmd, shell=True, text=True)
-            data2 = json.loads(output2)
-            items2 = data2['body']['items']['item']
-            df_news = pd.DataFrame(items2)
-
-            st.success("사망 뉴스 수집 성공!")
-            st.dataframe(df_news)
-
-        except subprocess.CalledProcessError as e:
-            st.error(f"❌ 명령어 실행 실패: {e}")
-        except json.JSONDecodeError as e:
-            st.error(f"❌ JSON 파싱 오류: {e}")
-        except KeyError as e:
-            st.error(f"❌ 응답 JSON에서 키 오류 발생: {e}")
