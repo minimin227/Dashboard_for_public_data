@@ -299,7 +299,7 @@ if len(metric) >= 1:
     ("group", "overlay"),
     index=0
     )
-    fig.update_layout(height=300 * rows, title_text=f"{x_axis} 기준 지표별 Subplot 비교", barmode=barmode)
+    fig.update_layout(height=500 * rows, title_text=f"{x_axis} 기준 지표별 Subplot 비교", barmode=barmode)
     st.plotly_chart(fig)
 else:
     st.warning("1개 이상의 지표를 선택해주세요.")
@@ -313,7 +313,7 @@ user_api_key = st.sidebar.text_input("Gemini API 키 입력", type="password")
 if user_api_key:
     genai.configure(api_key=user_api_key)
 
-    st.subheader("사고유형별 산업재해 자료")
+    st.subheader("사고유형별 맞춤형 교육 자료")
 
     # 사고유형 코드 선택
     ctgr03_dict = {
@@ -393,7 +393,7 @@ if user_api_key:
 
                     prompt = f"""
                     아래는 '{selected_type}' 사고유형에 해당하는 산업재해 링크 리스트입니다.
-                    이 리스트 내에서 {중업종}에 적용될만 한 자료를 찾아서 그 링크를 최대 3개 제시하고 요약해 주세요.
+                    이 리스트 내에서 {중업종}에 적용될만 한 자료를 찾아서 그 링크를 가장 적합한 1개만 제시하고 요약해 주세요.
 
                     ```
                     {preview}
@@ -417,7 +417,7 @@ if user_api_key:
 
 
     st.subheader("안전보건관리 체크리스트 만들기")
-    if st.button("체크리스트 생성하기"):  # ✅ 버튼 추가
+    if st.button("체크리스트 생성하기"): 
         try:
             # 1. merged DataFrame → CSV 문자열
             preview1 = merged.to_csv(index=False)
@@ -433,7 +433,7 @@ if user_api_key:
             pdf_path2 = os.path.join("Data", "산업안전보건법(법률)(제19591호)(20240517).pdf")
             with open(pdf_path, "rb") as f:
                 reader = PyPDF2.PdfReader(f)
-                pdf_text = ""
+                pdf_text2 = ""
                 for page in reader.pages[:92]:
                     pdf_text2 += page.extract_text()
             # 3. Gemini 프롬프트 구성
@@ -442,8 +442,7 @@ if user_api_key:
             선택된 중업종은 다음과 같습니다: **{중업종}**
 
             아래는 해당 업종에서 발생한 산업재해 통계이며, 발생형태별로 위험지수/근로자수 등의 지표를 포함합니다.
-
-            또한, 소규모 사업장을 위한 안전보건관리체계 구축 가이드도 함께 제공됩니다.
+            또한, 소규모 사업장을 위한 안전보건관리체계 구축 가이드와 법령 요약본도 함께 제공됩니다.
 
             ---
 
@@ -451,17 +450,50 @@ if user_api_key:
 
             선택한 중업종의 사업장에서 **중대재해 예방을 위해 반드시 갖춰야 할 안전보건관리 체크리스트**를 작성해 주세요.
 
-            - 일반적인 항목: 위험성 평가, 작업자 교육, 책임자 지정 등
-            - 중업종 맞춤 항목: 해당 업종에서 높은 위험지수를 보이는 발생형태를 중심으로 위험요인별 점검 항목 제안
+            - 각 규모, 중업종에서 **위험지수/근로자수 지표가 선택한 규모, 중업종별 평균 위험지수/근로자수 지표보다 높은 발생형태**를 기준으로 위험요소별 맞춤형 점검항목을 작성해 주세요.
+            - 동일한 발생형태에 해당하는 항목들은 **점검항목 열을 병합한 형태**로 작성해 주세요. (`rowspan` 속성 사용)
+            - **점검내용**은 **법령 요약** 지침을 따르고, 만약 지침 내용이 없다면 선택한 **중업종**과 **점검항목**이 연관성 있게 **점검내용**을 작성해주세요. 
+            - 제작 완료된 **점검내용**은 (법령 제OO조)로 명시하지 않습니다.
+            - 표는 반드시 **HTML `<table>` 형식**으로 출력해 주세요. 마크다운 표(`|` 형태)는 절대 사용하지 마세요.
+            - **점검상태**는 `<select>`나 `<input>` 태그 없이, 반드시 `"미흡 / 보통 / 양호"`라는 **텍스트로만** 표기해 주세요.
+            - HTML 표 바로 위에는 다음 문장을 포함해 주세요:  
+            **{중업종}에서 위험지수가 높은 사고를 안전하게 예방합니다.**
+            - 아래는 참고용 형식 예시입니다. 실제 내용은 중업종과 위험형태에 따라 자유롭게 구성해 주세요.
+
+            예시:
+            <table border="1">
+            <thead>
+                <tr>
+                <th>점검항목</th>
+                <th>점검내용</th>
+                <th>점검상태</th>
+                <th>비고</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                <td rowspan="2">넘어짐 재해 예방</td>
+                <td>작업장 바닥은 미끄럼 방지 처리가 되어 있나요?</td>
+                <td>미흡 / 보통 / 양호</td>
+                <td></td>
+                </tr>
+                <tr>
+                <td>작업 통로는 정리정돈이 잘 되어 있나요?</td>
+                <td>미흡 / 보통 / 양호</td>
+                <td></td>
+                </tr>
+            </tbody>
+            </table>
 
             ---
 
             **재해 통계 (중업종: {중업종})**
+
             ```
             {preview1}
             ```
 
-            안전보건관리 가이드 요약:
+            안전보건관리 가이드 요약:            
             ```
             {pdf_text}
             ```
@@ -475,10 +507,49 @@ if user_api_key:
             with st.spinner("Gemini가 데이터를 분석 중입니다..."):
                 response = model.generate_content(prompt)
                 # st.subheader("Gemini 분석 결과: 체크리스트 제안")
-                st.markdown(response.text)
-
+                
+                st.markdown(response.text, unsafe_allow_html=True) # unsafe_allow_html=True 추가
         except Exception as e:
             st.error(f"❌ 오류 발생: {e}")
+                
+                
+    st.subheader(f"사망 뉴스 수집")
+    news_number = st.number_input("사망 뉴스 수 (numOfRows)", min_value=1, max_value=2480, value=100, step=100, key="news_rows")
+
+    if st.button("사망 뉴스 불러오기"):
+        with st.spinner("사망 뉴스를 불러오는 중입니다..."):
+            try:
+                cmd = f"""
+                curl -X 'GET' \
+                'https://apis.data.go.kr/B552468/news_api01/getNews_api01?serviceKey=XtjiWbPLxexBDUbR5RjQLsQ6M77Nrjt99CAFTlyV7CzsjfImD3yIqp7E9IGa%2Br2EFc%2F0FhabrGQ4AM%2Fc5uMOWg%3D%3D&pageNo=1&numOfRows={news_number}' \
+                -H 'accept: */*'
+                """
+                output2 = subprocess.check_output(cmd, shell=True, text=True)
+                data2 = json.loads(output2)
+                items2 = data2['body']['items']['item']
+                df_news = pd.DataFrame(items2)
+
+                st.success("사망 뉴스 수집 성공!")
+                st.dataframe(df_news)
+
+                preview2 = df_news.to_csv(index=False)
+
+                prompt = f"""
+                {preview2}에서 오늘 날짜 기준으로 최근 일주일 동안 발생한 사망사고를 요약하고, 사고유형별로 구분하여 간결히 정리해 주세요.
+                """
+                # {pdf_text[:20000]}  # 최대 약 2,000자만 발췌
+                model = genai.GenerativeModel("gemini-2.0-flash")
+                with st.spinner("Gemini가 데이터를 분석 중입니다..."):
+                    response = model.generate_content(prompt)
+                    st.markdown(response.text)
+            except subprocess.CalledProcessError as e:
+                st.error(f"❌ 명령어 실행 실패: {e}")
+            except json.JSONDecodeError as e:
+                st.error(f"❌ JSON 파싱 오류: {e}")
+            except KeyError as e:
+                st.error(f"❌ 응답 JSON에서 키 오류 발생: {e}")
+            except Exception as e:
+                st.error(f"❌ 예외 발생: {e}")                    
 
 else:
     st.warning("👈 좌측 사이드바에 Gemini API 키를 입력해주세요.")
@@ -502,4 +573,4 @@ if selected_중업종:
             st.markdown(f"- 링크 2: {make_hyperlink(row['링크2'])}")
             st.markdown(f"- 링크 3: {make_hyperlink(row['링크3'])}")
     else:
-        st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")
+        st.warning("선택한 중업종에 대한 링크 정보가 없습니다.")       
